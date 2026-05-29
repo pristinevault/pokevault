@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatEur, formatPct, pctChange, SERIE_MAP } from '../lib/api'
 import ItemModal from '../components/ItemModal'
+import CardPicker from '../components/CardPicker'
 
 const RARETE_OPTIONS = ['GOLD', 'ALT', 'AR', 'FULL ART', 'FULL ART SHINY', 'EX', 'VMAX', 'VSTAR', 'V', 'TERRACRISTAL', 'RADIEUX', 'RAINBOW', 'HOLO', 'SHINY', 'TG', 'POKEBALL', 'ESCOUADE', 'GX', 'AMAZING']
 const SERIE_OPTIONS = Object.keys(SERIE_MAP).sort()
@@ -19,6 +20,7 @@ const FIELDS = [
 ]
 
 export default function Cartes({ cartes, userId, onRefresh }) {
+  const [picker, setPicker] = useState(false)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
@@ -42,7 +44,6 @@ export default function Cartes({ cartes, userId, onRefresh }) {
         return pnlB - pnlA
       }); break
       case 'serie': data.sort((a, b) => (a.serie || '').localeCompare(b.serie || '')); break
-      case 'recent': break
     }
     return data
   }, [cartes, search, filterRarete, sortBy])
@@ -52,13 +53,15 @@ export default function Cartes({ cartes, userId, onRefresh }) {
     val: filtered.reduce((a, c) => a + (c.valeur_loose || 0) * (c.quantite || 1), 0),
   }), [filtered])
 
+  async function handlePickerSelect(cardData) {
+    await supabase.from('cartes').insert({ ...cardData, user_id: userId })
+    onRefresh()
+  }
+
   async function handleSave(form) {
     const payload = { ...form, user_id: userId }
-    if (editing) {
-      await supabase.from('cartes').update(payload).eq('id', editing.id)
-    } else {
-      await supabase.from('cartes').insert(payload)
-    }
+    if (editing) await supabase.from('cartes').update(payload).eq('id', editing.id)
+    else await supabase.from('cartes').insert(payload)
     setModal(false); setEditing(null); onRefresh()
   }
 
@@ -69,7 +72,6 @@ export default function Cartes({ cartes, userId, onRefresh }) {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600 }}>Cartes Singles</h1>
@@ -77,12 +79,14 @@ export default function Cartes({ cartes, userId, onRefresh }) {
             {filtered.length} cartes · PA {formatEur(totaux.pa)} · Valeur {formatEur(totaux.val)}
           </div>
         </div>
-        <button className="btn-primary" onClick={() => { setEditing(null); setModal(true) }}>+ Ajouter</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-ghost" onClick={() => { setEditing(null); setModal(true) }} style={{ fontSize: 12 }}>+ Manuel</button>
+          <button className="btn-primary" onClick={() => setPicker(true)}>🔍 Ajouter une carte</button>
+        </div>
       </div>
 
-      {/* Filtres */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 200 }} />
+        <input placeholder="🔍 Filtrer ma collection..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 220 }} />
         <select value={filterRarete} onChange={e => setFilterRarete(e.target.value)} style={{ width: 150 }}>
           <option value="">Toutes raretés</option>
           {RARETE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -95,20 +99,20 @@ export default function Cartes({ cartes, userId, onRefresh }) {
         </select>
       </div>
 
-      {/* Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
               <tr>
+                <th style={{ width: 50 }}>Img</th>
                 <th>Qté</th>
                 <th>Pokémon</th>
                 <th>Série</th>
                 <th>Rareté</th>
                 <th>Numéro</th>
-                <th style={{ textAlign: 'right' }}>P.A. unit.</th>
-                <th style={{ textAlign: 'right' }}>Valeur unit.</th>
-                <th style={{ textAlign: 'right' }}>Total valeur</th>
+                <th style={{ textAlign: 'right' }}>P.A.</th>
+                <th style={{ textAlign: 'right' }}>Valeur</th>
+                <th style={{ textAlign: 'right' }}>Total</th>
                 <th style={{ textAlign: 'right' }}>P&L</th>
                 <th></th>
               </tr>
@@ -116,11 +120,16 @@ export default function Cartes({ cartes, userId, onRefresh }) {
             <tbody>
               {filtered.map(c => {
                 const total = (c.valeur_loose || 0) * (c.quantite || 1)
-                const pa = (c.prix_achat || 0) * (c.quantite || 1)
                 const pnl = pctChange(c.valeur_loose || 0, c.prix_achat || 0)
                 return (
                   <tr key={c.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--accent-bright)', fontSize: 14 }}>{c.quantite || 1}</td>
+                    <td>
+                      {c.image_url ? (
+                        <img src={c.image_url} alt={c.pokemon} style={{ width: 36, borderRadius: 4 }}
+                          onError={e => e.target.style.display = 'none'} />
+                      ) : <div style={{ width: 36, height: 50, background: 'var(--bg-elevated)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🃏</div>}
+                    </td>
+                    <td style={{ fontWeight: 600, color: 'var(--accent-bright)' }}>{c.quantite || 1}</td>
                     <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{c.pokemon || '—'}</td>
                     <td><span className="tag" style={{ borderColor: 'rgba(139,92,246,0.3)', color: 'var(--accent-bright)', fontSize: 10 }}>{c.serie}</span></td>
                     <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.rarete}</td>
@@ -145,8 +154,9 @@ export default function Cartes({ cartes, userId, onRefresh }) {
                 )
               })}
               {!filtered.length && (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                  Aucune carte. Cliquez sur "+ Ajouter" pour commencer.
+                <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>🃏</div>
+                  Aucune carte. Clique sur "🔍 Ajouter une carte" pour commencer.
                 </td></tr>
               )}
             </tbody>
@@ -154,7 +164,6 @@ export default function Cartes({ cartes, userId, onRefresh }) {
         </div>
       </div>
 
-      {/* Confirm delete */}
       {deleting && (
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: 360, textAlign: 'center' }}>
@@ -169,9 +178,10 @@ export default function Cartes({ cartes, userId, onRefresh }) {
         </div>
       )}
 
+      <CardPicker show={picker} onClose={() => setPicker(false)} onSelect={handlePickerSelect} />
       <ItemModal show={modal} onClose={() => { setModal(false); setEditing(null) }}
         onSave={handleSave} fields={FIELDS}
-        title={editing ? 'Modifier la carte' : 'Ajouter une carte'}
+        title={editing ? 'Modifier la carte' : 'Ajouter manuellement'}
         initialData={editing} />
     </div>
   )

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatEur, formatPct, pctChange } from '../lib/api'
 import ItemModal from '../components/ItemModal'
+import SealedPicker from '../components/SealedPicker'
 
 const TYPE_OPTIONS = ['ETB', 'DISPLAY', 'ARSET', 'ARTSET', 'UPC', 'POKÉBOX', 'COFFRET DÉCOUVERTE', 'VALISETTE', 'BOITE COLLECTION']
 
@@ -17,6 +18,7 @@ const FIELDS = [
 ]
 
 export default function Scelles({ scelles, userId, onRefresh }) {
+  const [picker, setPicker] = useState(false)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
@@ -31,6 +33,11 @@ export default function Scelles({ scelles, userId, onRefresh }) {
     pa: filtered.reduce((a, s) => a + (s.prix_achat || 0) * (s.quantite || 1), 0),
     resell: filtered.reduce((a, s) => a + (s.resell || s.retail || 0) * (s.quantite || 1), 0),
   }), [filtered])
+
+  async function handlePickerSelect(data) {
+    await supabase.from('scelles').insert({ ...data, user_id: userId })
+    onRefresh()
+  }
 
   async function handleSave(form) {
     const payload = { ...form, user_id: userId }
@@ -53,16 +60,20 @@ export default function Scelles({ scelles, userId, onRefresh }) {
             {filtered.length} produits · PA {formatEur(totaux.pa)} · Revente est. {formatEur(totaux.resell)}
           </div>
         </div>
-        <button className="btn-primary" onClick={() => { setEditing(null); setModal(true) }}>+ Ajouter</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-ghost" onClick={() => { setEditing(null); setModal(true) }} style={{ fontSize: 12 }}>+ Manuel</button>
+          <button className="btn-primary" onClick={() => setPicker(true)}>📦 Ajouter un scellé</button>
+        </div>
       </div>
 
-      <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250, marginBottom: 16 }} />
+      <input placeholder="🔍 Filtrer..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 250, marginBottom: 16 }} />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table>
             <thead>
               <tr>
+                <th style={{ width: 50 }}>Logo</th>
                 <th>Produit</th>
                 <th>Type</th>
                 <th>Qté</th>
@@ -80,6 +91,12 @@ export default function Scelles({ scelles, userId, onRefresh }) {
                 const totalPA = (s.prix_achat || 0) * (s.quantite || 1)
                 return (
                   <tr key={s.id}>
+                    <td>
+                      {s.image_url ? (
+                        <img src={`${s.image_url}.webp`} alt={s.nom} style={{ height: 30, objectFit: 'contain' }}
+                          onError={e => e.target.style.display = 'none'} />
+                      ) : <div style={{ fontSize: 20 }}>📦</div>}
+                    </td>
                     <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{s.nom}</td>
                     <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.type_produit}</td>
                     <td style={{ fontWeight: 600, color: 'var(--accent-bright)' }}>{s.quantite || 1}</td>
@@ -103,7 +120,12 @@ export default function Scelles({ scelles, userId, onRefresh }) {
                   </tr>
                 )
               })}
-              {!filtered.length && <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Aucun scellé.</td></tr>}
+              {!filtered.length && (
+                <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
+                  Aucun scellé. Clique sur "📦 Ajouter un scellé".
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -121,9 +143,10 @@ export default function Scelles({ scelles, userId, onRefresh }) {
         </div>
       )}
 
+      <SealedPicker show={picker} onClose={() => setPicker(false)} onSelect={handlePickerSelect} />
       <ItemModal show={modal} onClose={() => { setModal(false); setEditing(null) }}
         onSave={handleSave} fields={FIELDS}
-        title={editing ? 'Modifier le scellé' : 'Ajouter un scellé'}
+        title={editing ? 'Modifier le scellé' : 'Ajouter manuellement'}
         initialData={editing} />
     </div>
   )
