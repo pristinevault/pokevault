@@ -19,6 +19,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [theme, setTheme] = useState(() => localStorage.getItem('pv_theme') || 'dark')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -55,7 +56,7 @@ export default function App() {
   function navigate(p) { setPage(p); setSidebarOpen(false) }
 
   const PAGES = {
-    dashboard: <Dashboard cartes={cartes} scelles={allScelles} gradees={gradees} boosters={boosters} priceHistory={priceHistory} />,
+    dashboard: <Dashboard cartes={cartes} scelles={allScelles} gradees={gradees} boosters={boosters} priceHistory={priceHistory} hidden={hidden} />,
     cartes: <Cartes cartes={cartes} userId={userId} onRefresh={refresh} />,
     scelles: <Scelles scelles={allScelles} userId={userId} onRefresh={refresh} />,
     gradees: <Gradees gradees={gradees} userId={userId} onRefresh={refresh} />,
@@ -65,27 +66,23 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="mobile-overlay" onClick={() => setSidebarOpen(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 150, backdropFilter: 'blur(2px)' }} />
       )}
 
       <Sidebar
-        active={page}
-        onNav={navigate}
-        totalPatrimoine={totalPatrimoine}
-        isAdmin={isAdmin}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        active={page} onNav={navigate} totalPatrimoine={totalPatrimoine}
+        isAdmin={isAdmin} isOpen={sidebarOpen} hidden={hidden}
       />
 
       <Header
-        user={session.user}
-        theme={theme}
+        user={session.user} theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         onSignOut={signOut}
         onMenuToggle={() => setSidebarOpen(o => !o)}
+        hidden={hidden}
+        onToggleHidden={() => setHidden(h => !h)}
       />
 
       <main className="main-content" style={{
