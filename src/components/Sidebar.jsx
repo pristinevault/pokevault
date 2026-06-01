@@ -6,11 +6,10 @@ const NAV = [
   { id: 'cartes', icon: '🃏', label: 'Cartes Loose' },
   { id: 'scelles', icon: '📦', label: 'Scellés' },
   { id: 'gradees', icon: '🏆', label: 'Gradées' },
-  { id: 'prices', icon: '📈', label: 'Prix Live' },
   { id: 'settings', icon: '⚙', label: 'Paramètres' },
 ]
 
-export default function Sidebar({ active, onNav, totalPatrimoine, onSignOut }) {
+export default function Sidebar({ active, onNav, totalPatrimoine }) {
   return (
     <aside style={{
       width: 220, minWidth: 220, background: 'var(--bg-secondary)',
@@ -20,12 +19,7 @@ export default function Sidebar({ active, onNav, totalPatrimoine, onSignOut }) {
     }}>
       <div style={{ padding: '0 20px 24px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'var(--accent)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, fontWeight: 700
-          }}>P</div>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>P</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>PokéVault</div>
             <div style={{ fontSize: 10, color: 'var(--accent-bright)', textTransform: 'uppercase', letterSpacing: 1 }}>Portfolio TCG</div>
@@ -41,25 +35,18 @@ export default function Sidebar({ active, onNav, totalPatrimoine, onSignOut }) {
       <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {NAV.map(item => (
           <button key={item.id} onClick={() => onNav(item.id)} style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 'var(--radius-sm)',
+            display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
+            borderRadius: 'var(--radius-sm)',
             background: active === item.id ? 'var(--accent-dim)' : 'transparent',
             border: active === item.id ? '1px solid var(--border-hover)' : '1px solid transparent',
             color: active === item.id ? 'var(--accent-bright)' : 'var(--text-secondary)',
             fontWeight: active === item.id ? 500 : 400,
             fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s'
           }}>
-            <span style={{ fontSize: 16 }}>{item.icon}</span>
-            {item.label}
+            <span style={{ fontSize: 16 }}>{item.icon}</span>{item.label}
           </button>
         ))}
       </nav>
-
-      <div style={{ padding: '12px 10px', borderTop: '1px solid var(--border)' }}>
-        <button className="btn-ghost" onClick={onSignOut} style={{ width: '100%', fontSize: 12, padding: '7px 12px' }}>
-          Déconnexion
-        </button>
-      </div>
     </aside>
   )
 }
