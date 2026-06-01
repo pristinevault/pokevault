@@ -5,17 +5,12 @@ import { format, subDays, subMonths, subYears } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 const TABS_CHART = [
-  { id: '24h', label: '24H' },
-  { id: '1S', label: '1S' },
-  { id: '1M', label: '1M' },
-  { id: '3M', label: '3M' },
-  { id: '1A', label: '1A' },
-  { id: 'MAX', label: 'MAX' },
+  { id: '24h', label: '24H' }, { id: '1S', label: '1S' }, { id: '1M', label: '1M' },
+  { id: '3M', label: '3M' }, { id: '1A', label: '1A' }, { id: 'MAX', label: 'MAX' },
 ]
-
 const CATEGORY_TABS = ['Global', 'Scellés', 'Cartes Loose', 'Gradées']
 
-function TabSwitch({ tabs, active, onChange, small }) {
+function TabSwitch({ tabs, active, onChange }) {
   return (
     <div style={{ display: 'flex', gap: 2, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3 }}>
       {tabs.map(t => {
@@ -23,9 +18,8 @@ function TabSwitch({ tabs, active, onChange, small }) {
         const label = typeof t === 'string' ? t : t.label
         return (
           <button key={id} onClick={() => onChange(id)} style={{
-            flex: 1, padding: small ? '4px 8px' : '5px 8px',
-            border: 'none', borderRadius: 6,
-            fontSize: small ? 10 : 11, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+            flex: 1, padding: '4px 8px', border: 'none', borderRadius: 6,
+            fontSize: 11, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
             background: active === id ? 'var(--bg-card)' : 'transparent',
             color: active === id ? 'var(--text-primary)' : 'var(--text-muted)',
             whiteSpace: 'nowrap'
@@ -36,14 +30,30 @@ function TabSwitch({ tabs, active, onChange, small }) {
   )
 }
 
+// Masque tous les montants en euros
+function Blurred({ children, hidden }) {
+  return (
+    <span style={{
+      filter: hidden ? 'blur(7px)' : 'none',
+      transition: 'filter 0.2s',
+      userSelect: hidden ? 'none' : 'auto',
+      display: 'inline-block',
+    }}>{children}</span>
+  )
+}
+
 function StatCard({ label, value, sub, trend, hidden }) {
   return (
     <div className="card" style={{ flex: 1, minWidth: 130 }}>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, filter: hidden ? 'blur(8px)' : 'none', transition: 'filter 0.2s', userSelect: hidden ? 'none' : 'auto' }}>
-        {value}
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+        <Blurred hidden={hidden}>{value}</Blurred>
       </div>
-      {sub && <div style={{ fontSize: 12, color: trend === 'up' ? 'var(--neon-green)' : trend === 'down' ? 'var(--neon-red)' : 'var(--text-muted)', filter: hidden ? 'blur(6px)' : 'none' }}>{sub}</div>}
+      {sub && (
+        <div style={{ fontSize: 12, color: trend === 'up' ? 'var(--neon-green)' : trend === 'down' ? 'var(--neon-red)' : 'var(--text-muted)' }}>
+          <Blurred hidden={hidden}>{sub}</Blurred>
+        </div>
+      )}
     </div>
   )
 }
@@ -91,19 +101,21 @@ function Top5Valeur({ cartes, scelles, gradees, boosters, hidden }) {
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>🏆 Top 5 par valeur</div>
-        <TabSwitch tabs={CATEGORY_TABS} active={tab} onChange={setTab} small />
+        <div style={{ fontSize: 13, fontWeight: 600 }}>🏆 Top 5 par valeur</div>
+        <TabSwitch tabs={CATEGORY_TABS} active={tab} onChange={setTab} />
       </div>
-      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }} className="top5-cards">
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
         {items.map((item, i) => (
           <div key={item.id || i} style={{ flexShrink: 0, width: 110, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
             {item.image_url
-              ? <img src={item.image_url} alt={item._label} style={{ width: '100%', aspectRatio: '2.5/3.5', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display='none'} />
+              ? <img src={item.image_url} alt={item._label} style={{ width: '100%', aspectRatio: '2.5/3.5', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display = 'none'} />
               : <div style={{ aspectRatio: '2.5/3.5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, background: 'var(--bg-card)', opacity: 0.4 }}>{typeIcon[item._type]}</div>}
             <div style={{ padding: '7px 8px 9px' }}>
               <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item._label}</div>
               <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item._sub}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-bright)', filter: hidden ? 'blur(5px)' : 'none' }}>{formatEur(item._val)}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-bright)' }}>
+                <Blurred hidden={hidden}>{formatEur(item._val)}</Blurred>
+              </div>
             </div>
           </div>
         ))}
@@ -126,8 +138,8 @@ function Top5Variations({ cartes, scelles, gradees, hidden }) {
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>📊 Top 5 variations P&L</div>
-        <TabSwitch tabs={CATEGORY_TABS} active={tab} onChange={setTab} small />
+        <div style={{ fontSize: 13, fontWeight: 600 }}>📊 Top 5 variations P&L</div>
+        <TabSwitch tabs={CATEGORY_TABS} active={tab} onChange={setTab} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map((item, i) => {
@@ -135,15 +147,19 @@ function Top5Variations({ cartes, scelles, gradees, hidden }) {
           return (
             <div key={item.id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
               {item.image_url
-                ? <img src={item.image_url} alt={item._label} style={{ width: 32, borderRadius: 4, flexShrink: 0 }} onError={e => e.target.style.display='none'} />
+                ? <img src={item.image_url} alt={item._label} style={{ width: 32, borderRadius: 4, flexShrink: 0 }} onError={e => e.target.style.display = 'none'} />
                 : <div style={{ width: 32, height: 44, background: 'var(--bg-card)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16, opacity: 0.4 }}>🃏</div>}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item._label}</div>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item._sub}</div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: up ? 'var(--neon-green)' : 'var(--neon-red)' }}>{formatPct(item._pnl)}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', filter: hidden ? 'blur(4px)' : 'none' }}>{formatEur(item._val)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: up ? 'var(--neon-green)' : 'var(--neon-red)' }}>
+                  <Blurred hidden={hidden}>{formatPct(item._pnl)}</Blurred>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  <Blurred hidden={hidden}>{formatEur(item._val)}</Blurred>
+                </div>
               </div>
             </div>
           )
@@ -154,9 +170,8 @@ function Top5Variations({ cartes, scelles, gradees, hidden }) {
   )
 }
 
-export default function Dashboard({ cartes, scelles, gradees, boosters, priceHistory }) {
+export default function Dashboard({ cartes, scelles, gradees, boosters, priceHistory, hidden }) {
   const [chartPeriod, setChartPeriod] = useState('MAX')
-  const [hidden, setHidden] = useState(false)
 
   const stats = useMemo(() => {
     const totalPA = [
@@ -207,7 +222,7 @@ export default function Dashboard({ cartes, scelles, gradees, boosters, priceHis
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* KPI Row */}
+      {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }} className="stats-row">
         <StatCard label="Patrimoine estimé" value={formatEur(stats.totalValeur)} hidden={hidden} />
         <StatCard label="Prix d'achat" value={formatEur(stats.totalPA)} hidden={hidden} />
@@ -220,15 +235,7 @@ export default function Dashboard({ cartes, scelles, gradees, boosters, priceHis
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Évolution du patrimoine</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => setHidden(h => !h)} title={hidden ? 'Afficher les montants' : 'Masquer les montants'} style={{
-                background: hidden ? 'var(--accent-dim)' : 'var(--bg-elevated)',
-                border: `1px solid ${hidden ? 'var(--accent)' : 'var(--border)'}`,
-                borderRadius: 8, padding: '4px 10px', fontSize: 14, cursor: 'pointer',
-                color: hidden ? 'var(--accent-bright)' : 'var(--text-muted)'
-              }}>{hidden ? '👁' : '👁‍🗨'}</button>
-              <TabSwitch tabs={TABS_CHART} active={chartPeriod} onChange={setChartPeriod} small />
-            </div>
+            <TabSwitch tabs={TABS_CHART} active={chartPeriod} onChange={setChartPeriod} />
           </div>
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={chartData}>
@@ -246,7 +253,6 @@ export default function Dashboard({ cartes, scelles, gradees, boosters, priceHis
             </AreaChart>
           </ResponsiveContainer>
         </div>
-
         <div className="card">
           <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 16 }}>Répartition</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -254,12 +260,14 @@ export default function Dashboard({ cartes, scelles, gradees, boosters, priceHis
               <div key={r.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>{r.pct}%</span>
+                  <span style={{ fontSize: 12, fontWeight: 500 }}>{r.pct}%</span>
                 </div>
                 <div style={{ height: 5, background: 'var(--bg-elevated)', borderRadius: 3 }}>
                   <div style={{ height: '100%', width: `${r.pct}%`, background: r.color, borderRadius: 3, transition: 'width 0.6s' }} />
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, filter: hidden ? 'blur(5px)' : 'none' }}>{formatEur(r.val)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                  <Blurred hidden={hidden}>{formatEur(r.val)}</Blurred>
+                </div>
               </div>
             ))}
           </div>
