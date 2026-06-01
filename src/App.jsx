@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase, getSession, signOut } from './lib/supabase'
 import { useCollection } from './lib/useCollection'
-import Sidebar from './components/Sidebar'
-import Header from './components/Header'
+import Topbar from './components/Topbar'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Cartes from './pages/Cartes'
@@ -18,7 +17,6 @@ export default function App() {
   const [page, setPage] = useState('dashboard')
   const [authLoading, setAuthLoading] = useState(true)
   const [theme, setTheme] = useState(() => localStorage.getItem('pv_theme') || 'dark')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
@@ -52,13 +50,9 @@ export default function App() {
   if (!session) return <Login onLogin={setSession} />
 
   const allScelles = [...scelles, ...boosters]
-  function navigate(p) { setPage(p); setSidebarOpen(false) }
 
   const PAGES = {
-    dashboard: <Dashboard
-      cartes={cartes} scelles={allScelles} gradees={gradees}
-      boosters={boosters} priceHistory={priceHistory} hidden={hidden}
-    />,
+    dashboard: <Dashboard cartes={cartes} scelles={allScelles} gradees={gradees} boosters={boosters} priceHistory={priceHistory} hidden={hidden} />,
     cartes: <Cartes cartes={cartes} userId={userId} onRefresh={refresh} hidden={hidden} />,
     scelles: <Scelles scelles={allScelles} userId={userId} onRefresh={refresh} hidden={hidden} />,
     gradees: <Gradees gradees={gradees} userId={userId} onRefresh={refresh} hidden={hidden} />,
@@ -67,27 +61,25 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {sidebarOpen && (
-        <div className="mobile-overlay" onClick={() => setSidebarOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 150 }} />
-      )}
-      <Sidebar
-        active={page} onNav={navigate} totalPatrimoine={totalPatrimoine}
-        isAdmin={isAdmin} isOpen={sidebarOpen} hidden={hidden}
-      />
-      <Header
-        user={session.user} theme={theme}
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      <Topbar
+        active={page}
+        onNav={setPage}
+        totalPatrimoine={totalPatrimoine}
+        isAdmin={isAdmin}
+        theme={theme}
         onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-        onSignOut={signOut}
-        onMenuToggle={() => setSidebarOpen(o => !o)}
         hidden={hidden}
         onToggleHidden={() => setHidden(h => !h)}
+        user={session.user}
+        onSignOut={signOut}
       />
       <main className="main-content" style={{
-        marginLeft: 220, flex: 1, padding: '28px 32px',
-        paddingTop: 'calc(var(--header-height) + 28px)',
-        minHeight: '100vh', background: 'var(--bg-primary)'
+        marginLeft: 0,
+        padding: '28px 32px',
+        paddingTop: 'calc(56px + 28px)',
+        minHeight: '100vh',
+        background: 'var(--bg-primary)'
       }}>
         {loading
           ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-muted)' }}>Chargement…</div>
