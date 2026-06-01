@@ -9,7 +9,7 @@ function useDebounce(value, delay) {
 const EXCLUDED = ['tcgp', 'tcgop', 'tcgl']
 function isExcluded(id) { return id && EXCLUDED.some(ex => id.toLowerCase().startsWith(ex)) }
 
-export default function SeriesBrowser({ show, onClose, onSelect, mode = 'card' }) {
+export default function SeriesBrowser({ show, onClose, onSelect, mode = 'card', confirmMode = 'standard' }) {
   const [series, setSeries] = useState([])
   const [sets, setSets] = useState([])
   const [cards, setCards] = useState([])
@@ -77,13 +77,22 @@ export default function SeriesBrowser({ show, onClose, onSelect, mode = 'card' }
     if (!selected) return
     const setCode = selected.set?.id?.toUpperCase().replace(/-/g, '') || ''
     const total = selected.set?.cardCount?.total || '?'
-    onSelect({
+    const cardData = {
       pokemon: selected.name,
       serie: setCode,
       rarete: selected.rarity || '',
       numero: selected.localId ? `${selected.localId}/${total}` : '',
       tcgdex_id: selected.id,
       image_url: selected.image ? `${selected.image}/high.webp` : '',
+    }
+    // Mode gradées : on retourne juste les infos carte, pas les prix/qté
+    if (confirmMode === 'grading') {
+      onSelect(cardData)
+      onClose()
+      return
+    }
+    onSelect({
+      ...cardData,
       quantite: qty,
       prix_achat: parseFloat(prixAchat) || 0,
       valeur_loose: selected.pricing?.cardmarket?.trend || 0,
@@ -235,7 +244,9 @@ export default function SeriesBrowser({ show, onClose, onSelect, mode = 'card' }
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn-ghost" onClick={() => setStep('items')} style={{ flex: 1 }}>← Retour</button>
-                <button className="btn-primary" onClick={handleConfirm} style={{ flex: 2 }}>✅ Ajouter à la collection</button>
+                <button className="btn-primary" onClick={handleConfirm} style={{ flex: 2 }}>
+                  {confirmMode === 'grading' ? '✅ Sélectionner cette carte' : '✅ Ajouter à la collection'}
+                </button>
               </div>
             </div>
           )}
