@@ -18,13 +18,12 @@ export default function App() {
   const [page, setPage] = useState('dashboard')
   const [authLoading, setAuthLoading] = useState(true)
   const [theme, setTheme] = useState(() => localStorage.getItem('pv_theme') || 'dark')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('pv_theme', theme)
   }, [theme])
-
-  function toggleTheme() { setTheme(t => t === 'dark' ? 'light' : 'dark') }
 
   useEffect(() => {
     getSession().then(s => { setSession(s); setAuthLoading(false) })
@@ -53,6 +52,8 @@ export default function App() {
 
   const allScelles = [...scelles, ...boosters]
 
+  function navigate(p) { setPage(p); setSidebarOpen(false) }
+
   const PAGES = {
     dashboard: <Dashboard cartes={cartes} scelles={allScelles} gradees={gradees} boosters={boosters} priceHistory={priceHistory} />,
     cartes: <Cartes cartes={cartes} userId={userId} onRefresh={refresh} />,
@@ -64,9 +65,36 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar active={page} onNav={setPage} totalPatrimoine={totalPatrimoine} isAdmin={isAdmin} />
-      <Header user={session.user} theme={theme} onToggleTheme={toggleTheme} onSignOut={signOut} />
-      <main style={{ marginLeft: 220, flex: 1, padding: '28px 32px', paddingTop: 80, minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="mobile-overlay" onClick={() => setSidebarOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 150, backdropFilter: 'blur(2px)' }} />
+      )}
+
+      <Sidebar
+        active={page}
+        onNav={navigate}
+        totalPatrimoine={totalPatrimoine}
+        isAdmin={isAdmin}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      <Header
+        user={session.user}
+        theme={theme}
+        onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+        onSignOut={signOut}
+        onMenuToggle={() => setSidebarOpen(o => !o)}
+      />
+
+      <main className="main-content" style={{
+        marginLeft: 220, flex: 1,
+        padding: '28px 32px',
+        paddingTop: 'calc(var(--header-height) + 28px)',
+        minHeight: '100vh',
+        background: 'var(--bg-primary)'
+      }}>
         {loading
           ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-muted)' }}>Chargement…</div>
           : (PAGES[page] || PAGES.dashboard)}
