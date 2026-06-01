@@ -8,7 +8,10 @@ import Dashboard from './pages/Dashboard'
 import Cartes from './pages/Cartes'
 import Scelles from './pages/Scelles'
 import Gradees from './pages/Gradees'
+import AdminCatalog from './pages/AdminCatalog'
 import Settings from './pages/Settings'
+
+const ADMIN_EMAIL = 'pristinevaultsas@gmail.com'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -21,9 +24,7 @@ export default function App() {
     localStorage.setItem('pv_theme', theme)
   }, [theme])
 
-  function toggleTheme() {
-    setTheme(t => t === 'dark' ? 'light' : 'dark')
-  }
+  function toggleTheme() { setTheme(t => t === 'dark' ? 'light' : 'dark') }
 
   useEffect(() => {
     getSession().then(s => { setSession(s); setAuthLoading(false) })
@@ -32,6 +33,7 @@ export default function App() {
   }, [])
 
   const userId = session?.user?.id
+  const isAdmin = session?.user?.email === ADMIN_EMAIL
   const { cartes, scelles, gradees, boosters, priceHistory, loading, refresh } = useCollection(userId)
 
   const totalPatrimoine = useMemo(() => [
@@ -56,12 +58,13 @@ export default function App() {
     cartes: <Cartes cartes={cartes} userId={userId} onRefresh={refresh} />,
     scelles: <Scelles scelles={allScelles} userId={userId} onRefresh={refresh} />,
     gradees: <Gradees gradees={gradees} userId={userId} onRefresh={refresh} />,
+    admin: <AdminCatalog user={session.user} />,
     settings: <Settings user={session.user} />,
   }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar active={page} onNav={setPage} totalPatrimoine={totalPatrimoine} onSignOut={signOut} />
+      <Sidebar active={page} onNav={setPage} totalPatrimoine={totalPatrimoine} isAdmin={isAdmin} />
       <Header user={session.user} theme={theme} onToggleTheme={toggleTheme} onSignOut={signOut} />
       <main style={{ marginLeft: 220, flex: 1, padding: '28px 32px', paddingTop: 80, minHeight: '100vh', background: 'var(--bg-primary)' }}>
         {loading
