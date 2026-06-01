@@ -97,8 +97,8 @@ export default function AdminCatalog({ user }) {
             serie: String(row['serie'] || row['Série'] || '').trim(),
             retail_fr: parseFloat(row['retail_fr'] || row['Retail'] || 0) || 0,
             release_date: row['release_date'] || row['Date'] || null,
+            image_url: String(row['image_url'] || row['Image'] || '').trim() || '',
             actif: true,
-            image_url: '',
           }
         }).filter(r => r.nom)
         setImportData(parsed)
@@ -124,10 +124,10 @@ export default function AdminCatalog({ user }) {
 
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['nom', 'type_produit', 'serie', 'retail_fr', 'release_date'],
-      ['ETB Mascarade Crépusculaire', 'ETB', 'Mascarade Crépusculaire', 44.99, '2024-11-22'],
-      ['Display Ecarlate et Violet', 'DISPLAY', 'Ecarlate et Violet', 144.99, '2023-03-31'],
-      ['Arset Paldea', 'ARSET', 'Destinées de Paldéa', 24.99, '2023-09-22'],
+      ['nom', 'type_produit', 'serie', 'retail_fr', 'release_date', 'image_url'],
+      ['ETB Mascarade Crépusculaire', 'ETB', 'Mascarade Crépusculaire', 44.99, '2024-11-22', 'https://exemple.com/image.jpg'],
+      ['Display Ecarlate et Violet', 'DISPLAY', 'Ecarlate et Violet', 144.99, '2023-03-31', ''],
+      ['Arset Paldea', 'ARSET', 'Destinées de Paldéa', 24.99, '2023-09-22', ''],
     ])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Catalogue')
@@ -287,7 +287,7 @@ export default function AdminCatalog({ user }) {
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Colonnes attendues</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {[['nom', true], ['type_produit', false], ['serie', false], ['retail_fr', false], ['release_date', false]].map(([col, req]) => (
+                {[['nom', true], ['type_produit', false], ['serie', false], ['retail_fr', false], ['release_date', false], ['image_url', false]].map(([col, req]) => (
                   <span key={col} style={{ padding: '3px 8px', borderRadius: 5, background: req ? 'rgba(139,92,246,0.15)' : 'var(--bg-elevated)', border: `1px solid ${req ? 'rgba(139,92,246,0.3)' : 'var(--border)'}`, fontSize: 11, fontFamily: 'monospace', color: req ? 'var(--accent-bright)' : 'var(--text-muted)' }}>
                     {col}{req ? ' *' : ''}
                   </span>
