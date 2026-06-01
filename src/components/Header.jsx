@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuToggle }) {
+export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuToggle, hidden, onToggleHidden }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const [form, setForm] = useState({
     phone: user?.user_metadata?.phone || '',
@@ -20,14 +20,12 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
 
   async function handleAvatarChange(e) {
     const file = e.target.files[0]; if (!file) return
-    setAvatarFile(file)
-    setAvatarPreview(URL.createObjectURL(file))
+    setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file))
   }
 
   async function handleSave() {
     setSaving(true)
     let avatarUrl = user?.user_metadata?.avatar_url || null
-
     if (avatarFile) {
       setUploadingAvatar(true)
       const ext = avatarFile.name.split('.').pop()
@@ -39,10 +37,7 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
       }
       setUploadingAvatar(false)
     }
-
-    await supabase.auth.updateUser({
-      data: { ...form, avatar_url: avatarUrl }
-    })
+    await supabase.auth.updateUser({ data: { ...form, avatar_url: avatarUrl } })
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -56,7 +51,7 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
         height: 'var(--header-height)', background: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 20px', gap: 10, zIndex: 90
+        padding: '0 20px', gap: 8, zIndex: 90
       }}>
         {/* Burger mobile */}
         <button className="mobile-menu-btn" onClick={onMenuToggle} style={{
@@ -67,7 +62,16 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
 
         <div style={{ flex: 1 }} />
 
-        {/* Toggle theme */}
+        {/* Bouton masquer les montants — à côté du toggle thème */}
+        <button onClick={onToggleHidden} title={hidden ? 'Afficher les montants' : 'Masquer les montants'} style={{
+          background: hidden ? 'var(--accent-dim)' : 'var(--bg-elevated)',
+          border: `1px solid ${hidden ? 'var(--accent)' : 'var(--border)'}`,
+          borderRadius: 8, padding: '6px 12px', fontSize: 16, cursor: 'pointer',
+          color: hidden ? 'var(--accent-bright)' : 'var(--text-muted)',
+          transition: 'all 0.2s'
+        }}>{hidden ? '👁' : '👁‍🗨'}</button>
+
+        {/* Toggle thème */}
         <button onClick={onToggleTheme} style={{
           background: 'var(--bg-elevated)', border: '1px solid var(--border)',
           borderRadius: 8, padding: '6px 12px', fontSize: 16,
@@ -107,20 +111,17 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
               <button onClick={() => setAccountOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
             </div>
 
-            {/* Avatar upload */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '16px', background: 'var(--bg-elevated)', borderRadius: 12 }}>
+            {/* Avatar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 22, padding: 16, background: 'var(--bg-elevated)', borderRadius: 12 }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: '#fff', border: '3px solid var(--border)' }}>
-                  {avatarPreview
-                    ? <img src={avatarPreview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarPreview(null)} />
-                    : initials}
+                <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--accent)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', border: '3px solid var(--border)' }}>
+                  {avatarPreview ? <img src={avatarPreview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarPreview(null)} /> : initials}
                 </div>
                 <button onClick={() => fileRef.current?.click()} style={{
-                  position: 'absolute', bottom: -2, right: -2,
-                  width: 22, height: 22, borderRadius: '50%',
+                  position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%',
                   background: 'var(--accent)', border: '2px solid var(--bg-card)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, cursor: 'pointer', color: '#fff'
+                  fontSize: 10, cursor: 'pointer', color: '#fff'
                 }}>✏</button>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
               </div>
@@ -133,7 +134,6 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Nom / Prénom */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Prénom</label>
@@ -161,7 +161,6 @@ export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuTo
                 {saved ? '✅ Sauvegardé !' : saving || uploadingAvatar ? '⟳ Sauvegarde...' : 'Sauvegarder'}
               </button>
 
-              {/* Theme toggle */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Thème</div>
                 <div style={{ display: 'flex', gap: 8 }}>
