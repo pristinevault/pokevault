@@ -4,9 +4,10 @@ import { formatEur, formatPct, pctChange, SERIE_MAP } from '../lib/api'
 import ItemModal from '../components/ItemModal'
 import SeriesBrowser from '../components/SeriesBrowser'
 import PriceRefreshButton from '../components/PriceRefreshButton'
+import CollectionFilters from '../components/CollectionFilters'
 
-const RARETE_OPTIONS = ['GOLD', 'ALT', 'AR', 'FULL ART', 'FULL ART SHINY', 'EX', 'VMAX', 'VSTAR', 'V', 'TERRACRISTAL', 'RADIEUX', 'RAINBOW', 'HOLO', 'SHINY', 'TG', 'POKEBALL', 'ESCOUADE', 'GX', 'AMAZING']
 const SERIE_OPTIONS = Object.keys(SERIE_MAP).sort()
+const RARETE_OPTIONS = ['GOLD', 'ALT', 'AR', 'FULL ART', 'FULL ART SHINY', 'EX', 'VMAX', 'VSTAR', 'V', 'TERRACRISTAL', 'RADIEUX', 'RAINBOW', 'HOLO', 'SHINY', 'TG', 'POKEBALL', 'ESCOUADE', 'GX', 'AMAZING']
 
 const FIELDS = [
   { key: 'quantite', label: 'Quantité', type: 'number', default: 1, step: 1 },
@@ -24,35 +25,31 @@ export default function Cartes({ cartes, userId, onRefresh }) {
   const [browser, setBrowser] = useState(false)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [search, setSearch] = useState('')
-  const [filterRarete, setFilterRarete] = useState('')
-  const [sortBy, setSortBy] = useState('valeur_desc')
   const [viewMode, setViewMode] = useState('grid')
   const [deleting, setDeleting] = useState(null)
+  const [filters, setFilters] = useState({ sort: 'valeur_desc' })
 
   const filtered = useMemo(() => {
     let data = [...cartes]
-    if (search) data = data.filter(c =>
-      (c.pokemon || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.serie || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.numero || '').includes(search)
+    if (filters.search) data = data.filter(c =>
+      (c.pokemon || '').toLowerCase().includes(filters.search.toLowerCase()) ||
+      (c.serie || '').toLowerCase().includes(filters.search.toLowerCase()) ||
+      (c.numero || '').includes(filters.search)
     )
-    if (filterRarete) data = data.filter(c => c.rarete === filterRarete)
-    switch (sortBy) {
-      case 'valeur_desc': data.sort((a, b) => (b.valeur_loose || 0) * (b.quantite || 1) - (a.valeur_loose || 0) * (a.quantite || 1)); break
-      case 'pnl_desc': data.sort((a, b) => {
-        const pa = (a.valeur_loose || 0) - (a.prix_achat || 0)
-        const pb = (b.valeur_loose || 0) - (b.prix_achat || 0)
-        return pb - pa
-      }); break
-      case 'serie': data.sort((a, b) => (a.serie || '').localeCompare(b.serie || '')); break
+    if (filters.rarete) data = data.filter(c => c.rarete === filters.rarete)
+    if (filters.serie) data = data.filter(c => (c.serie || '').toLowerCase().includes(filters.serie.toLowerCase()))
+    switch (filters.sort) {
+      case 'valeur_desc': data.sort((a, b) => (b.valeur_loose||0)*(b.quantite||1) - (a.valeur_loose||0)*(a.quantite||1)); break
+      case 'valeur_asc': data.sort((a, b) => (a.valeur_loose||0)*(a.quantite||1) - (b.valeur_loose||0)*(b.quantite||1)); break
+      case 'pnl_desc': data.sort((a, b) => pctChange(b.valeur_loose,b.prix_achat) - pctChange(a.valeur_loose,a.prix_achat)); break
+      case 'alpha': data.sort((a, b) => (a.pokemon||'').localeCompare(b.pokemon||'')); break
     }
     return data
-  }, [cartes, search, filterRarete, sortBy])
+  }, [cartes, filters])
 
   const totaux = useMemo(() => ({
-    pa: filtered.reduce((a, c) => a + (c.prix_achat || 0) * (c.quantite || 1), 0),
-    val: filtered.reduce((a, c) => a + (c.valeur_loose || 0) * (c.quantite || 1), 0),
+    pa: filtered.reduce((a, c) => a + (c.prix_achat||0)*(c.quantite||1), 0),
+    val: filtered.reduce((a, c) => a + (c.valeur_loose||0)*(c.quantite||1), 0),
   }), [filtered])
 
   async function handleBrowserSelect(cardData) {
@@ -72,53 +69,45 @@ export default function Cartes({ cartes, userId, onRefresh }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600 }}>Cartes Loose</h1>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
             {filtered.length} cartes · PA {formatEur(totaux.pa)} · Valeur {formatEur(totaux.val)}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <PriceRefreshButton cartes={cartes} userId={userId} onRefresh={onRefresh} />
           <button className="btn-ghost" onClick={() => { setEditing(null); setModal(true) }} style={{ fontSize: 12 }}>+ Manuel</button>
           <button className="btn-primary" onClick={() => setBrowser(true)}>🔍 Ajouter une carte</button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input placeholder="🔍 Filtrer..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: 200 }} />
-        <select value={filterRarete} onChange={e => setFilterRarete(e.target.value)} style={{ width: 150 }}>
-          <option value="">Toutes raretés</option>
-          {RARETE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ width: 150 }}>
-          <option value="valeur_desc">Valeur ↓</option>
-          <option value="pnl_desc">P&L ↓</option>
-          <option value="serie">Série A-Z</option>
-          <option value="recent">Récents</option>
-        </select>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3 }}>
-          {[['grid', '⊞'], ['table', '☰']].map(([mode, icon]) => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{
+      <div style={{ marginBottom: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1 }}>
+          <CollectionFilters mode="cartes" filters={filters} onChange={setFilters} />
+        </div>
+        <div style={{ display: 'flex', gap: 3, background: 'var(--bg-elevated)', borderRadius: 8, padding: 3, flexShrink: 0 }}>
+          {[['grid', '⊞'], ['table', '☰']].map(([m, icon]) => (
+            <button key={m} onClick={() => setViewMode(m)} style={{
               padding: '5px 10px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14,
-              background: viewMode === mode ? 'var(--bg-card)' : 'transparent',
-              color: viewMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
+              background: viewMode === m ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === m ? 'var(--text-primary)' : 'var(--text-muted)',
             }}>{icon}</button>
           ))}
         </div>
       </div>
 
       {viewMode === 'grid' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 12 }}>
+        <div className="grid-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 12 }}>
           {filtered.map(c => {
-            const pnl = pctChange(c.valeur_loose || 0, c.prix_achat || 0)
+            const pnl = pctChange(c.valeur_loose||0, c.prix_achat||0)
             return (
               <div key={c.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ position: 'relative' }}>
                   {c.image_url
-                    ? <img src={c.image_url} alt={c.pokemon} style={{ width: '100%', display: 'block', aspectRatio: '2.5/3.5', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
-                    : <div style={{ aspectRatio: '2.5/3.5', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, opacity: 0.3 }}>🃏</div>}
+                    ? <img src={c.image_url} alt={c.pokemon} style={{ width: '100%', aspectRatio: '2.5/3.5', objectFit: 'cover', display: 'block' }} onError={e => e.target.style.display='none'} />
+                    : <div style={{ aspectRatio: '2.5/3.5', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, opacity: 0.25 }}>🃏</div>}
                   {c.quantite > 1 && <div style={{ position: 'absolute', top: 6, right: 6, background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>×{c.quantite}</div>}
                   {c.prix_achat > 0 && pnl != null && <div style={{ position: 'absolute', top: 6, left: 6 }}><span className={`badge ${pnl >= 0 ? 'badge-up' : 'badge-down'}`} style={{ fontSize: 9 }}>{formatPct(pnl)}</span></div>}
                 </div>
@@ -126,7 +115,7 @@ export default function Cartes({ cartes, userId, onRefresh }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.pokemon || '—'}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6 }}>{c.rarete} · {c.serie}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-bright)' }}>{formatEur(c.valeur_loose || 0)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-bright)' }}>{formatEur(c.valeur_loose||0)}</div>
                     <div style={{ display: 'flex', gap: 3 }}>
                       <button className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10 }} onClick={() => { setEditing(c); setModal(true) }}>✏</button>
                       <button className="btn-danger" style={{ padding: '2px 6px', fontSize: 10 }} onClick={() => setDeleting(c.id)}>✕</button>
@@ -145,41 +134,38 @@ export default function Cartes({ cartes, userId, onRefresh }) {
           <div style={{ overflowX: 'auto' }}>
             <table>
               <thead><tr>
-                <th style={{ width: 44 }}>Img</th><th>Qté</th><th>Pokémon</th><th>Série</th><th>Rareté</th><th>Numéro</th>
-                <th style={{ textAlign: 'right' }}>P.A.</th><th style={{ textAlign: 'right' }}>Valeur</th>
-                <th style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>P&L</th><th></th>
+                <th style={{ width: 44 }}>Img</th><th>Qté</th><th>Pokémon</th><th>Série</th><th>Rareté</th><th>N°</th>
+                <th style={{ textAlign: 'right' }}>P.A.</th><th style={{ textAlign: 'right' }}>Valeur</th><th style={{ textAlign: 'right' }}>P&L</th><th></th>
               </tr></thead>
               <tbody>
                 {filtered.map(c => {
-                  const total = (c.valeur_loose || 0) * (c.quantite || 1)
-                  const pnl = pctChange(c.valeur_loose || 0, c.prix_achat || 0)
+                  const pnl = pctChange(c.valeur_loose||0, c.prix_achat||0)
                   return (
                     <tr key={c.id}>
-                      <td>{c.image_url ? <img src={c.image_url} alt={c.pokemon} style={{ width: 34, borderRadius: 4 }} onError={e => e.target.style.display='none'} /> : <div style={{ width: 34, height: 48, background: 'var(--bg-elevated)', borderRadius: 4, display:'flex', alignItems:'center', justifyContent:'center', fontSize: 14 }}>🃏</div>}</td>
-                      <td style={{ fontWeight: 600, color: 'var(--accent-bright)' }}>{c.quantite || 1}</td>
-                      <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{c.pokemon || '—'}</td>
+                      <td>{c.image_url ? <img src={c.image_url} style={{ width: 32, borderRadius: 3 }} onError={e => e.target.style.display='none'} /> : <div style={{ width: 32, height: 44, background: 'var(--bg-elevated)', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, opacity: 0.3 }}>🃏</div>}</td>
+                      <td style={{ fontWeight: 600, color: 'var(--accent-bright)' }}>{c.quantite||1}</td>
+                      <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{c.pokemon||'—'}</td>
                       <td><span className="tag" style={{ borderColor: 'rgba(139,92,246,0.3)', color: 'var(--accent-bright)', fontSize: 10 }}>{c.serie}</span></td>
                       <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.rarete}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{c.numero}</td>
-                      <td style={{ textAlign: 'right' }}>{formatEur(c.prix_achat || 0)}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--text-primary)' }}>{formatEur(c.valeur_loose || 0)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatEur(total)}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>{c.numero}</td>
+                      <td style={{ textAlign: 'right' }}>{formatEur(c.prix_achat||0)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--text-primary)' }}>{formatEur(c.valeur_loose||0)}</td>
                       <td style={{ textAlign: 'right' }}>{c.prix_achat > 0 && pnl != null ? <span className={`badge ${pnl >= 0 ? 'badge-up' : 'badge-down'}`}>{formatPct(pnl)}</span> : '—'}</td>
-                      <td><div style={{ display: 'flex', gap: 5 }}>
-                        <button className="btn-ghost" style={{ padding: '3px 8px', fontSize: 10 }} onClick={() => { setEditing(c); setModal(true) }}>✏</button>
-                        <button className="btn-danger" style={{ padding: '3px 8px', fontSize: 10 }} onClick={() => setDeleting(c.id)}>✕</button>
+                      <td><div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn-ghost" style={{ padding: '3px 7px', fontSize: 10 }} onClick={() => { setEditing(c); setModal(true) }}>✏</button>
+                        <button className="btn-danger" style={{ padding: '3px 7px', fontSize: 10 }} onClick={() => setDeleting(c.id)}>✕</button>
                       </div></td>
                     </tr>
                   )
                 })}
-                {!filtered.length && <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Aucune carte.</td></tr>}
+                {!filtered.length && <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Aucune carte.</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {deleting && <div className="modal-overlay"><div className="modal" style={{ maxWidth: 360, textAlign: 'center' }}>
+      {deleting && <div className="modal-overlay"><div className="modal" style={{ maxWidth: 340, textAlign: 'center' }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>🗑</div>
         <h3 style={{ marginBottom: 8 }}>Supprimer cette carte ?</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>Irréversible.</p>
