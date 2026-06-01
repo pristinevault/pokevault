@@ -1,15 +1,16 @@
 import React from 'react'
 import { formatEur } from '../lib/api'
 
-const NAV = [
-  { id: 'dashboard', icon: '◈', label: 'Dashboard' },
-  { id: 'cartes', icon: '🃏', label: 'Cartes Loose' },
-  { id: 'scelles', icon: '📦', label: 'Scellés' },
-  { id: 'gradees', icon: '🏆', label: 'Gradées' },
-  { id: 'settings', icon: '⚙', label: 'Paramètres' },
-]
+export default function Sidebar({ active, onNav, totalPatrimoine, isAdmin }) {
+  const NAV = [
+    { id: 'dashboard', icon: '◈', label: 'Dashboard' },
+    { id: 'cartes', icon: '🃏', label: 'Cartes Loose' },
+    { id: 'scelles', icon: '📦', label: 'Scellés' },
+    { id: 'gradees', icon: '🏆', label: 'Gradées' },
+    { id: 'settings', icon: '⚙', label: 'Paramètres' },
+    ...(isAdmin ? [{ id: 'admin', icon: '🛠', label: 'Catalogue Admin', admin: true }] : []),
+  ]
 
-export default function Sidebar({ active, onNav, totalPatrimoine }) {
   return (
     <aside style={{
       width: 220, minWidth: 220, background: 'var(--bg-secondary)',
@@ -37,11 +38,14 @@ export default function Sidebar({ active, onNav, totalPatrimoine }) {
           <button key={item.id} onClick={() => onNav(item.id)} style={{
             display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
             borderRadius: 'var(--radius-sm)',
-            background: active === item.id ? 'var(--accent-dim)' : 'transparent',
-            border: active === item.id ? '1px solid var(--border-hover)' : '1px solid transparent',
-            color: active === item.id ? 'var(--accent-bright)' : 'var(--text-secondary)',
+            background: active === item.id ? (item.admin ? 'rgba(245,158,11,0.1)' : 'var(--accent-dim)') : 'transparent',
+            border: active === item.id ? `1px solid ${item.admin ? 'rgba(245,158,11,0.3)' : 'var(--border-hover)'}` : '1px solid transparent',
+            color: active === item.id ? (item.admin ? '#f59e0b' : 'var(--accent-bright)') : item.admin ? 'var(--neon-amber)' : 'var(--text-secondary)',
             fontWeight: active === item.id ? 500 : 400,
-            fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s'
+            fontSize: 13, cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s',
+            marginTop: item.admin ? 8 : 0,
+            borderTop: item.admin ? '1px solid var(--border)' : 'none',
+            paddingTop: item.admin ? 17 : 9,
           }}>
             <span style={{ fontSize: 16 }}>{item.icon}</span>{item.label}
           </button>
