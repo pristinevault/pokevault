@@ -1,28 +1,72 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function Header({ user, theme, onToggleTheme, onSignOut }) {
+export default function Header({ user, theme, onToggleTheme, onSignOut, onMenuToggle }) {
   const [accountOpen, setAccountOpen] = useState(false)
-  const [phone, setPhone] = useState('')
+  const [form, setForm] = useState({
+    phone: user?.user_metadata?.phone || '',
+    firstName: user?.user_metadata?.firstName || '',
+    lastName: user?.user_metadata?.lastName || '',
+    address: user?.user_metadata?.address || '',
+  })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState(user?.user_metadata?.avatar_url || null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileRef = useRef()
 
-  async function handleSavePhone() {
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files[0]; if (!file) return
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+  }
+
+  async function handleSave() {
     setSaving(true)
-    await supabase.auth.updateUser({ data: { phone } })
+    let avatarUrl = user?.user_metadata?.avatar_url || null
+
+    if (avatarFile) {
+      setUploadingAvatar(true)
+      const ext = avatarFile.name.split('.').pop()
+      const path = `avatars/${user.id}.${ext}`
+      const { error } = await supabase.storage.from('pokevault').upload(path, avatarFile, { upsert: true })
+      if (!error) {
+        const { data } = supabase.storage.from('pokevault').getPublicUrl(path)
+        avatarUrl = data.publicUrl
+      }
+      setUploadingAvatar(false)
+    }
+
+    await supabase.auth.updateUser({
+      data: { ...form, avatar_url: avatarUrl }
+    })
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const initials = (form.firstName?.[0] || user?.email?.[0] || 'U').toUpperCase()
+
   return (
     <>
-      <div style={{
+      <div className="header-bar" style={{
         position: 'fixed', top: 0, right: 0, left: 220,
-        height: 52, background: 'var(--bg-secondary)',
+        height: 'var(--header-height)', background: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-        padding: '0 28px', gap: 10, zIndex: 90
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 20px', gap: 10, zIndex: 90
       }}>
+        {/* Burger mobile */}
+        <button className="mobile-menu-btn" onClick={onMenuToggle} style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '6px 10px', fontSize: 18,
+          color: 'var(--text-secondary)', cursor: 'pointer', display: 'none'
+        }}>☰</button>
+
+        <div style={{ flex: 1 }} />
+
         {/* Toggle theme */}
         <button onClick={onToggleTheme} style={{
           background: 'var(--bg-elevated)', border: '1px solid var(--border)',
@@ -36,18 +80,20 @@ export default function Header({ user, theme, onToggleTheme, onSignOut }) {
         <button onClick={() => setAccountOpen(true)} style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: '6px 12px', cursor: 'pointer'
+          borderRadius: 8, padding: '5px 12px 5px 6px', cursor: 'pointer'
         }}>
           <div style={{
-            width: 22, height: 22, borderRadius: '50%',
-            background: 'var(--accent)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700, color: '#fff'
+            width: 28, height: 28, borderRadius: '50%',
+            background: avatarPreview ? 'transparent' : 'var(--accent)',
+            overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0
           }}>
-            {user?.email?.[0]?.toUpperCase() || 'U'}
+            {avatarPreview
+              ? <img src={avatarPreview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarPreview(null)} />
+              : initials}
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.email}
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {form.firstName || user?.email?.split('@')[0]}
           </span>
         </button>
       </div>
@@ -55,41 +101,67 @@ export default function Header({ user, theme, onToggleTheme, onSignOut }) {
       {/* Panel compte */}
       {accountOpen && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setAccountOpen(false)}>
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 16, fontWeight: 600 }}>Mon compte</h2>
               <button onClick={() => setAccountOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
             </div>
 
-            {/* Avatar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '14px 16px', background: 'var(--bg-elevated)', borderRadius: 10 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                {user?.email?.[0]?.toUpperCase() || 'U'}
+            {/* Avatar upload */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: '16px', background: 'var(--bg-elevated)', borderRadius: 12 }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: '#fff', border: '3px solid var(--border)' }}>
+                  {avatarPreview
+                    ? <img src={avatarPreview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarPreview(null)} />
+                    : initials}
+                </div>
+                <button onClick={() => fileRef.current?.click()} style={{
+                  position: 'absolute', bottom: -2, right: -2,
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: 'var(--accent)', border: '2px solid var(--bg-card)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, cursor: 'pointer', color: '#fff'
+                }}>✏</button>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
               </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{user?.email}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Compte PokéVault</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {form.firstName && form.lastName ? `${form.firstName} ${form.lastName}` : user?.email}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{user?.email}</div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Nom / Prénom */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Prénom</label>
+                  <input value={form.firstName} placeholder="Valentin" onChange={e => set('firstName', e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Nom</label>
+                  <input value={form.lastName} placeholder="Dupont" onChange={e => set('lastName', e.target.value)} />
+                </div>
+              </div>
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Email</label>
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Email</label>
                 <input value={user?.email || ''} disabled style={{ opacity: 0.6 }} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Téléphone</label>
-                <input
-                  type="tel" placeholder="+33 6 00 00 00 00"
-                  value={phone || user?.user_metadata?.phone || ''}
-                  onChange={e => setPhone(e.target.value)}
-                />
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Téléphone</label>
+                <input type="tel" placeholder="+33 6 00 00 00 00" value={form.phone} onChange={e => set('phone', e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Adresse</label>
+                <textarea rows={2} placeholder="1 rue de la Paix, 75001 Paris" value={form.address} onChange={e => set('address', e.target.value)} style={{ resize: 'none' }} />
               </div>
 
-              <button className="btn-primary" onClick={handleSavePhone} disabled={saving} style={{ width: '100%', padding: '10px' }}>
-                {saved ? '✅ Sauvegardé !' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              <button className="btn-primary" onClick={handleSave} disabled={saving || uploadingAvatar} style={{ width: '100%', padding: '10px' }}>
+                {saved ? '✅ Sauvegardé !' : saving || uploadingAvatar ? '⟳ Sauvegarde...' : 'Sauvegarder'}
               </button>
 
+              {/* Theme toggle */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Thème</div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -104,7 +176,7 @@ export default function Header({ user, theme, onToggleTheme, onSignOut }) {
                 </div>
               </div>
 
-              <button className="btn-danger" onClick={() => { onSignOut(); setAccountOpen(false) }} style={{ width: '100%', padding: '10px', marginTop: 4 }}>
+              <button className="btn-danger" onClick={() => { onSignOut(); setAccountOpen(false) }} style={{ width: '100%', padding: '10px' }}>
                 Déconnexion
               </button>
             </div>
