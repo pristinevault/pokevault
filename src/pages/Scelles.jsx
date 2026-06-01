@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatEur, formatPct, pctChange } from '../lib/api'
+import CatalogBrowser from '../components/CatalogBrowser'
 
 const TYPE_OPTIONS = ['ETB', 'DISPLAY', 'ARSET', 'ARTSET', 'UPC', 'POKÉBOX', 'COFFRET DÉCOUVERTE', 'VALISETTE', 'BOITE COLLECTION', 'BOOSTER']
+const TYPE_COLOR = { ETB: '#8b5cf6', DISPLAY: '#10b981', ARSET: '#3b82f6', BOOSTER: '#f59e0b', POKÉBOX: '#ec4899' }
 const EMPTY = { nom: '', type_produit: 'ETB', quantite: 1, prix_achat: '', retail: '', resell: '', date_achat: '', notes: '', image_url: '' }
 
 export default function Scelles({ scelles, userId, onRefresh }) {
-  const [modal, setModal] = useState(false)
+  const [catalogOpen, setCatalogOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
@@ -15,6 +18,7 @@ export default function Scelles({ scelles, userId, onRefresh }) {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const filtered = useMemo(() => {
     let data = [...scelles]
@@ -28,10 +32,12 @@ export default function Scelles({ scelles, userId, onRefresh }) {
     resell: filtered.reduce((a, s) => a + (s.resell || s.retail || 0) * (s.quantite || 1), 0),
   }), [filtered])
 
-  function openAdd() { setForm(EMPTY); setEditing(null); setImageFile(null); setImagePreview(null); setModal(true) }
   function openEdit(s) {
     setForm({ ...s, prix_achat: s.prix_achat || '', retail: s.retail || '', resell: s.resell || '' })
-    setEditing(s); setImageFile(null); setImagePreview(s.image_url || null); setModal(true)
+    setEditing(s); setImageFile(null); setImagePreview(s.image_url || null); setManualOpen(true)
+  }
+  function openManualAdd() {
+    setForm(EMPTY); setEditing(null); setImageFile(null); setImagePreview(null); setManualOpen(true)
   }
 
   function handleImageChange(e) {
@@ -50,7 +56,13 @@ export default function Scelles({ scelles, userId, onRefresh }) {
     setUploading(false); return data.publicUrl
   }
 
-  async function handleSave() {
+  async function handleCatalogSelect(data) {
+    await supabase.from('scelles').insert({ ...data, user_id: userId })
+    onRefresh()
+  }
+
+  async function handleManualSave() {
+    setSaving(true)
     const imageUrl = await uploadImage()
     const payload = {
       nom: form.nom, type_produit: form.type_produit,
@@ -65,7 +77,7 @@ export default function Scelles({ scelles, userId, onRefresh }) {
     }
     if (editing) await supabase.from('scelles').update(payload).eq('id', editing.id)
     else await supabase.from('scelles').insert(payload)
-    setModal(false); onRefresh()
+    setSaving(false); setManualOpen(false); onRefresh()
   }
 
   async function handleDelete(id) {
@@ -74,8 +86,6 @@ export default function Scelles({ scelles, userId, onRefresh }) {
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
-  const TYPE_COLOR = { ETB: '#8b5cf6', DISPLAY: '#10b981', ARSET: '#3b82f6', BOOSTER: '#f59e0b', POKÉBOX: '#ec4899' }
 
   return (
     <div>
@@ -86,7 +96,10 @@ export default function Scelles({ scelles, userId, onRefresh }) {
             {filtered.length} produits · PA {formatEur(totaux.pa)} · Revente est. {formatEur(totaux.resell)}
           </div>
         </div>
-        <button className="btn-primary" onClick={openAdd}>+ Ajouter un scellé</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-ghost" onClick={openManualAdd} style={{ fontSize: 12 }}>+ Manuel</button>
+          <button className="btn-primary" onClick={() => setCatalogOpen(true)}>📦 Ajouter depuis le catalogue</button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -105,11 +118,9 @@ export default function Scelles({ scelles, userId, onRefresh }) {
             <div key={s.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ position: 'relative', background: 'var(--bg-elevated)', minHeight: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
                 {s.image_url
-                  ? <img src={s.image_url} alt={s.nom} style={{ maxHeight: 130, maxWidth: '100%', objectFit: 'contain' }} onError={e => { e.target.style.display = 'none' }} />
-                  : <div style={{ fontSize: 52, opacity: 0.25 }}>📦</div>}
-                {s.quantite > 1 && (
-                  <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--accent)', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>×{s.quantite}</div>
-                )}
+                  ? <img src={s.image_url} alt={s.nom} style={{ maxHeight: 130, maxWidth: '100%', objectFit: 'contain' }} onError={e => e.target.style.display='none'} />
+                  : <div style={{ fontSize: 52, opacity: 0.2 }}>📦</div>}
+                {s.quantite > 1 && <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--accent)', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>×{s.quantite}</div>}
                 <div style={{ position: 'absolute', top: 8, left: 8 }}>
                   <span style={{ background: `${typeColor}22`, border: `1px solid ${typeColor}55`, borderRadius: 6, padding: '2px 7px', fontSize: 10, fontWeight: 600, color: typeColor }}>{s.type_produit}</span>
                 </div>
@@ -142,30 +153,29 @@ export default function Scelles({ scelles, userId, onRefresh }) {
         {!filtered.length && (
           <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
-            Aucun scellé. Clique sur "+ Ajouter un scellé".
+            <div style={{ marginBottom: 16 }}>Aucun scellé dans ta collection.</div>
+            <button className="btn-primary" onClick={() => setCatalogOpen(true)}>📦 Parcourir le catalogue</button>
           </div>
         )}
       </div>
 
-      {/* Modal */}
-      {modal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
+      {/* Modal ajout manuel */}
+      {manualOpen && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setManualOpen(false)}>
           <div className="modal" style={{ maxWidth: 520 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600 }}>{editing ? 'Modifier le scellé' : 'Ajouter un scellé'}</h2>
-              <button onClick={() => setModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+              <h2 style={{ fontSize: 16, fontWeight: 600 }}>{editing ? 'Modifier le scellé' : 'Ajout manuel'}</h2>
+              <button onClick={() => setManualOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
             </div>
 
-            {/* Upload image */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Photo du produit</label>
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{ width: 90, height: 110, borderRadius: 8, border: '2px dashed var(--border)', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                  {imagePreview ? <img src={imagePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 26, opacity: 0.4 }}>📦</span>}
+                  {imagePreview ? <img src={imagePreview} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 26, opacity: 0.4 }}>📦</span>}
                 </div>
                 <div style={{ flex: 1 }}>
                   <input type="file" accept="image/*" onChange={handleImageChange} style={{ fontSize: 12, padding: '6px 8px' }} />
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Photo de ta boîte, ETB, display...</div>
                 </div>
               </div>
             </div>
@@ -173,7 +183,7 @@ export default function Scelles({ scelles, userId, onRefresh }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={{ gridColumn: '1/-1' }}>
                 <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Nom du produit</label>
-                <input value={form.nom} placeholder="ex: ETB Écarlate et Violet 7" onChange={e => set('nom', e.target.value)} />
+                <input value={form.nom} placeholder="ex: ETB Mascarade Crépusculaire" onChange={e => set('nom', e.target.value)} />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 5 }}>Type</label>
@@ -203,9 +213,9 @@ export default function Scelles({ scelles, userId, onRefresh }) {
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button className="btn-ghost" onClick={() => setModal(false)} style={{ flex: 1 }}>Annuler</button>
-              <button className="btn-primary" onClick={handleSave} disabled={uploading} style={{ flex: 2 }}>
-                {uploading ? 'Upload...' : editing ? 'Mettre à jour' : 'Ajouter'}
+              <button className="btn-ghost" onClick={() => setManualOpen(false)} style={{ flex: 1 }}>Annuler</button>
+              <button className="btn-primary" onClick={handleManualSave} disabled={saving || uploading} style={{ flex: 2 }}>
+                {saving || uploading ? '⟳ Sauvegarde...' : editing ? 'Mettre à jour' : 'Ajouter'}
               </button>
             </div>
           </div>
@@ -223,6 +233,8 @@ export default function Scelles({ scelles, userId, onRefresh }) {
           </div>
         </div>
       )}
+
+      <CatalogBrowser show={catalogOpen} onClose={() => setCatalogOpen(false)} onSelect={handleCatalogSelect} />
     </div>
   )
 }
