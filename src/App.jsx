@@ -7,7 +7,6 @@ import Dashboard from './pages/Dashboard'
 import Cartes from './pages/Cartes'
 import Scelles from './pages/Scelles'
 import Gradees from './pages/Gradees'
-import Boosters from './pages/Boosters'
 import PricesLive from './pages/PricesLive'
 import Settings from './pages/Settings'
 
@@ -34,45 +33,32 @@ export default function App() {
     ].reduce((a, b) => a + b, 0)
   }, [cartes, scelles, gradees, boosters])
 
-  if (authLoading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: 'var(--accent-bright)', fontSize: 14 }}>Chargement…</div>
-      </div>
-    )
-  }
+  if (authLoading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: 'var(--accent-bright)', fontSize: 14 }}>Chargement…</div>
+    </div>
+  )
 
   if (!session) return <Login onLogin={setSession} />
 
   const PAGES = {
     dashboard: <Dashboard cartes={cartes} scelles={scelles} gradees={gradees} boosters={boosters} priceHistory={priceHistory} />,
     cartes: <Cartes cartes={cartes} userId={userId} onRefresh={refresh} />,
-    scelles: <Scelles scelles={scelles} userId={userId} onRefresh={refresh} />,
+    scelles: <Scelles scelles={[...scelles, ...boosters]} userId={userId} onRefresh={refresh} />,
     gradees: <Gradees gradees={gradees} userId={userId} onRefresh={refresh} />,
-    boosters: <Boosters boosters={boosters} userId={userId} onRefresh={refresh} />,
     prices: <PricesLive cartes={cartes} userId={userId} onRefresh={refresh} />,
     settings: <Settings user={session.user} />,
   }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar
-        active={page}
-        onNav={setPage}
-        totalPatrimoine={totalPatrimoine}
-        onSignOut={signOut}
-      />
-      <main style={{
-        marginLeft: 220, flex: 1, padding: '28px 32px',
-        minHeight: '100vh', background: 'var(--bg-primary)'
-      }}>
+      <Sidebar active={page} onNav={setPage} totalPatrimoine={totalPatrimoine} onSignOut={signOut} />
+      <main style={{ marginLeft: 220, flex: 1, padding: '28px 32px', minHeight: '100vh', background: 'var(--bg-primary)' }}>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-muted)' }}>
             Chargement de la collection…
           </div>
-        ) : (
-          PAGES[page] || PAGES.dashboard
-        )}
+        ) : (PAGES[page] || PAGES.dashboard)}
       </main>
     </div>
   )
