@@ -24,8 +24,10 @@ export default function PriceRefreshButton({ cartes, userId, onRefresh }) {
         seen.set(key, price)
         await delay(300)
       }
-      if (price?.trend) {
-        await supabase.from('cartes').update({ valeur_loose: price.trend }).eq('id', c.id)
+      // Utilise avg7 en priorité, sinon avg30, sinon trend
+      const val = price?.avg7 ?? price?.avg30 ?? price?.trend ?? null
+      if (val) {
+        await supabase.from('cartes').update({ valeur_loose: val }).eq('id', c.id)
         updated++
       }
       setProgress(Math.round(((i + 1) / cartes.length) * 100))
@@ -40,21 +42,21 @@ export default function PriceRefreshButton({ cartes, userId, onRefresh }) {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 120, height: 4, background: 'var(--bg-elevated)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 100, height: 4, background: 'var(--bg-elevated)', borderRadius: 2, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${progress}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.3s' }} />
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{progress}%</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{progress}%</span>
         </div>
       )}
       {done !== null && !loading && (
-        <span style={{ fontSize: 12, color: 'var(--neon-green)' }}>✅ {done} prix mis à jour</span>
+        <span style={{ fontSize: 12, color: 'var(--neon-green)', whiteSpace: 'nowrap' }}>✅ {done} mis à jour</span>
       )}
-      <button className="btn-ghost" onClick={handleRefresh} disabled={loading} style={{ fontSize: 12, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 14 }}>{loading ? '⟳' : '🔄'}</span>
-        {loading ? `Actualisation...` : 'Actualiser les prix'}
+      <button className="btn-ghost" onClick={handleRefresh} disabled={loading} style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+        <span>{loading ? '⟳' : '🔄'}</span>
+        <span className="desktop-nav">{loading ? 'Actualisation...' : 'Actualiser prix'}</span>
       </button>
     </div>
   )
